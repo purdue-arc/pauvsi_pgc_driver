@@ -1,0 +1,4 @@
+<launch>
+	<node name="camera" pkg="pauvsi_pgc_driver" type="pgcDriver" output="screen">
+	</node>
+</launch>

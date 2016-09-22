@@ -22,7 +22,7 @@ endif()
 
 
 catkin_package(
-	INCLUDE_DIRS include 
+	INCLUDE_DIRS include include/pgc_driver
 	DEPENDS eigen opencv
 )
 
@@ -32,6 +32,7 @@ include_directories(
 
 add_library(pgcDriverLib include/pgc_driver/Driver.h)
 set_target_properties(pgcDriverLib PROPERTIES LINKER_LANGUAGE CXX)
+target_link_libraries(pgcDriverLib ${POINTGREY_LIB})
 
 add_executable(pgcDriver src/pgc_driver.cpp)
 target_link_libraries(pgcDriver ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} pgcDriverLib)
