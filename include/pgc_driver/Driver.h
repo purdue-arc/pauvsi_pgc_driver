@@ -39,8 +39,8 @@ private:
 	cv::Mat intrinsic;
 	cv::Mat distortion;
 	ros::Time imageStamp;
-public:
 
+public:
 	bool publish_distort;
 	bool publish_undistort;
 	bool publish_mono;
@@ -52,6 +52,7 @@ public:
 
 		intrinsic = this->createMatFromString(intrinsicString); //convert intrinsic string to cv::Mat
 		distortion = this->createMatFromString(distortionString); //convert distortion string to cv::Mat
+
 	}
 
 	/*
@@ -108,6 +109,9 @@ public:
 		//SET IMAGE
 		this->setImage(cv::Mat(bgrImage.GetRows(), bgrImage.GetCols(), CV_8UC3, bgrImage.GetData(),rowBytes));
 
+		ROS_ERROR_COND(this->getImage().cols == 0 || this->getImage().rows == 0, "image size is 0 X 0");
+		ROS_DEBUG_STREAM_ONCE("image size: " << this->getImage().cols << " X " << this->getImage().rows);
+
 		return true;
 	}
 
@@ -119,6 +123,18 @@ public:
 		rawImage = image;
 	}
 
+	cv::Mat getImage()
+	{
+		return this->rawImage;
+	}
+	/*
+	 * views the image using opencv's imshow
+	 */
+	void viewImage(cv::Mat img)
+	{
+		cv::imshow("debug", img);
+		cv::waitKey(1);
+	}
 	/*
 	 * This connects the PG Chameleon or other camera to a serial number
 	 */

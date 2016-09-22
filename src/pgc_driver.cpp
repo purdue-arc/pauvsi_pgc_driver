@@ -4,10 +4,13 @@
 
 #include "../include/pgc_driver/Driver.h"
 
+
 int main(int argc, char **argv)
 {
 	ros::init(argc, argv, "pgcDriver", ros::init_options::AnonymousName);
 	ros::NodeHandle nh;
+
+	image_transport::ImageTransport it(nh);
 
 	Driver driver = Driver();
 
@@ -22,7 +25,10 @@ int main(int argc, char **argv)
 
 	while(nh.ok())
 	{
+		ROS_DEBUG_ONCE("capturing image");
 		driver.captureImage();
+
+		//driver.viewImage(driver.getImage());
 
 		loop_rate.sleep();
 	}
