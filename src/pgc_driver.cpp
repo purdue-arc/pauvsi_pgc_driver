@@ -14,6 +14,14 @@ int main(int argc, char **argv)
 
 	Driver driver = Driver();
 
+	//set up driver's publishers according to ros standards
+	driver.cameraPublisher = it.advertise(driver.topic + "/cameraInfo", 1);
+	driver.distortMonoPublisher = it.advertise(driver.topic + "/image", 1);
+	driver.distortColorPublisher = it.advertise(driver.topic + "/image_color", 1);
+	driver.rectColorPublisher = it.advertise(driver.topic + "/image_rect_color", 1);
+	driver.rectMonoPublisher = it.advertise(driver.topic + "/image_rect", 1);
+
+
 	// try to connect the camera
 	while(!driver.connectCamera(driver.getSerialNumber()) && nh.ok())
 	{

@@ -33,7 +33,6 @@ class Driver
 private:
 	cv::Mat rawImage;
 	int serial_number;
-	std::string topic;
 	std::string intrinsicString;
 	std::string distortionString;
 	cv::Mat intrinsic;
@@ -41,11 +40,18 @@ private:
 	ros::Time imageStamp;
 
 public:
+	std::string topic;
 	bool publish_distort;
-	bool publish_undistort;
+	bool publish_rect;
 	bool publish_mono;
 	bool publish_color;
 	int frame_rate;
+
+	image_transport::Publisher cameraPublisher;
+	image_transport::Publisher distortColorPublisher;
+	image_transport::Publisher distortMonoPublisher;
+	image_transport::Publisher rectColorPublisher;
+	image_transport::Publisher rectMonoPublisher;
 
 	Driver(){
 		this->getParameters(); // get parameters from the param server
@@ -74,7 +80,7 @@ public:
 
 		// distortion publish
 		ros::param::param<bool>("~publish_distort", publish_distort, false);
-		ros::param::param<bool>("~publish_undistort", publish_undistort, true);
+		ros::param::param<bool>("~publish_undistort", publish_rect, true);
 
 		// color publish
 		ros::param::param<bool>("~publish_mono", publish_mono, true);
