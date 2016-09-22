@@ -15,11 +15,10 @@ int main(int argc, char **argv)
 	Driver driver = Driver();
 
 	//set up driver's publishers according to ros standards
-	driver.cameraPublisher = it.advertise(driver.topic + "/cameraInfo", 1);
-	driver.distortMonoPublisher = it.advertise(driver.topic + "/image", 1);
-	driver.distortColorPublisher = it.advertise(driver.topic + "/image_color", 1);
-	driver.rectColorPublisher = it.advertise(driver.topic + "/image_rect_color", 1);
-	driver.rectMonoPublisher = it.advertise(driver.topic + "/image_rect", 1);
+	if(driver.publish_distort && driver.publish_mono) {driver.monoPublisher = it.advertiseCamera(driver.topic + "/image", 1);}
+	if(driver.publish_distort && driver.publish_color) {driver.colorPublisher = it.advertiseCamera(driver.topic + "/image_color", 1);}
+	if(driver.publish_rect && driver.publish_color) {driver.rectColorPublisher = it.advertiseCamera(driver.topic + "/image_rect_color", 1);}
+	if(driver.publish_rect && driver.publish_mono) {driver.rectMonoPublisher = it.advertiseCamera(driver.topic + "/image_rect", 1);}
 
 
 	// try to connect the camera
@@ -37,6 +36,8 @@ int main(int argc, char **argv)
 		driver.captureImage();
 
 		//driver.viewImage(driver.getImage());
+
+		driver.publishMessages();
 
 		loop_rate.sleep();
 	}

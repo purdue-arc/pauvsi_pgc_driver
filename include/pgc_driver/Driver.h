@@ -13,6 +13,8 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/calib3d.hpp>
+#include <sensor_msgs/Image.h>
+#include <sensor_msgs/CameraInfo.h>
 #include <iostream>
 #include <string>
 #include <math.h>
@@ -38,6 +40,8 @@ private:
 	cv::Mat intrinsic;
 	cv::Mat distortion;
 	ros::Time imageStamp;
+	std::string cameraFrame;
+	std::string distortionModel;
 
 public:
 	std::string topic;
@@ -47,11 +51,10 @@ public:
 	bool publish_color;
 	int frame_rate;
 
-	image_transport::Publisher cameraPublisher;
-	image_transport::Publisher distortColorPublisher;
-	image_transport::Publisher distortMonoPublisher;
-	image_transport::Publisher rectColorPublisher;
-	image_transport::Publisher rectMonoPublisher;
+	image_transport::CameraPublisher colorPublisher;
+	image_transport::CameraPublisher monoPublisher;
+	image_transport::CameraPublisher rectColorPublisher;
+	image_transport::CameraPublisher rectMonoPublisher;
 
 	Driver(){
 		this->getParameters(); // get parameters from the param server
@@ -79,18 +82,27 @@ public:
 		ros::param::param<std::string>("~topic", topic, "/camera");
 
 		// distortion publish
-		ros::param::param<bool>("~publish_distort", publish_distort, false);
-		ros::param::param<bool>("~publish_undistort", publish_rect, true);
+		ros::param::param<bool>("~publish_distort", publish_distort, true);
+		ros::param::param<bool>("~publish_rectified", publish_rect, false);
 
 		// color publish
-		ros::param::param<bool>("~publish_mono", publish_mono, true);
+		ros::param::param<bool>("~publish_mono", publish_mono, false);
 		ros::param::param<bool>("~publish_color", publish_color, true);
 
 		// undistort matrices
 		ros::param::param<std::string>("~intrinsic", intrinsicString, "0");
 		ros::param::param<std::string>("~distortion", distortionString, "0");
+
+		//model
+		ros::param::param<std::string>("~distortionModel", distortionModel, "fisheye");
+
+		//frame
+		ros::param::param<std::string>("~frame", cameraFrame, "camera");
 	}
 
+	/*
+	 * will capture image from camera and set the image timestamp
+	 */
 	bool captureImage()
 	{
 		//SET TIMESTAMP
@@ -342,6 +354,72 @@ public:
 	{
 		input.erase(std::remove(input.begin(),input.end(),' '),input.end());
 		return input;
+	}
+
+	/*
+	 * assembles and publishes all message that have subscribers
+	 */
+	bool publishMessages()
+	{
+		//assemble the cameraInfo msg
+		sensor_msgs::CameraInfo camInfo;
+		camInfo.header.frame_id = this->cameraFrame;
+		camInfo.header.stamp = this->imageStamp;
+		camInfo.distortion_model = this->distortionModel;
+		camInfo.height = this->rawImage.rows;
+		camInfo.width = this->rawImage.cols;
+		camInfo.D = this->convertMatToVector(this->distortion);
+		std::vector<double> K_vec = this->convertMatToVector(this->intrinsic);
+		if(K_vec.size() == 9)
+		{
+			for(int i = 0; i < 9; i++) camInfo.K.at(i) = K_vec.at(i); // this sets each of the members of K
+		}
+		else{ROS_WARN_STREAM_ONCE("intrinsic matrix specified not the right size. its size is: " << K_vec.size() << " however it must be 9");}
+
+		//begin publishing
+		if(this->colorPublisher.getNumSubscribers() > 0)
+		{
+			sensor_msgs::Image img;
+			cv_bridge::CvImage(camInfo.header, "bgr8", this->rawImage).toImageMsg(img);
+			ROS_DEBUG_ONCE("publishing color distorted image");
+			colorPublisher.publish(img, camInfo);
+		}
+
+		if(this->monoPublisher.getNumSubscribers() > 0)
+		{
+			cv::Mat grayImage;
+			cvtColor(this->rawImage, grayImage, CV_BGR2GRAY);
+			sensor_msgs::Image img;
+			cv_bridge::CvImage(camInfo.header, "mono8", grayImage).toImageMsg(img);
+			monoPublisher.publish(img, camInfo);
+		}
+
+		if(this->rectColorPublisher.getNumSubscribers() > 0)
+		{
+
+		}
+
+		if(this->rectMonoPublisher.getNumSubscribers() > 0)
+		{
+
+		}
+	}
+
+	/*
+	 * converts cv::Mat to vector in double
+	 */
+	std::vector<double> convertMatToVector(cv::Mat mat){
+		std::vector<double> array;
+		ROS_DEBUG_STREAM_ONCE("converting " << mat << "vector of doubles");
+		for(int i = 0; i < mat.rows; i++)
+		{
+			for(int j = 0; j < mat.cols; j++)
+			{
+				array.push_back(mat.at<float>(i, j));
+			}
+		}
+
+		return array;
 	}
 
 	int getSerialNumber()
