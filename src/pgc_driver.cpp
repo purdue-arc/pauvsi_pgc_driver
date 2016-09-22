@@ -33,11 +33,11 @@ int main(int argc, char **argv)
 	while(nh.ok())
 	{
 		ROS_DEBUG_ONCE("capturing image");
-		driver.captureImage();
+		cv::Mat image = driver.captureImage();
 
-		//driver.viewImage(driver.getImage());
+		//driver.viewImage(image);
 
-		driver.publishMessages();
+		driver.publishMessages(image);
 
 		loop_rate.sleep();
 	}

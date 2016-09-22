@@ -33,7 +33,6 @@ FlyCapture2::BusManager busMngr;
 class Driver
 {
 private:
-	cv::Mat rawImage;
 	int serial_number;
 	std::string intrinsicString;
 	std::string distortionString;
@@ -103,7 +102,7 @@ public:
 	/*
 	 * will capture image from camera and set the image timestamp
 	 */
-	bool captureImage()
+	cv::Mat captureImage()
 	{
 		//SET TIMESTAMP
 		this->imageStamp = ros::Time::now();
@@ -115,7 +114,6 @@ public:
 		if ( error != FlyCapture2::PGRERROR_OK )
 		{
 			ROS_ERROR("Capture Error");
-			return false;
 		}
 
 		// CONVERT TO BGR
@@ -125,26 +123,16 @@ public:
 		// CONVERT TO MAT
 		unsigned int rowBytes = (double)bgrImage.GetReceivedDataSize()/(double)bgrImage.GetRows();
 		//SET IMAGE
-		this->setImage(cv::Mat(bgrImage.GetRows(), bgrImage.GetCols(), CV_8UC3, bgrImage.GetData(),rowBytes));
+		cv::Mat image = (cv::Mat(bgrImage.GetRows(), bgrImage.GetCols(), CV_8UC3, bgrImage.GetData(),rowBytes));
 
-		ROS_ERROR_COND(this->getImage().cols == 0 || this->getImage().rows == 0, "image size is 0 X 0");
-		ROS_DEBUG_STREAM_ONCE("image size: " << this->getImage().cols << " X " << this->getImage().rows);
+		ROS_ERROR_COND(image.cols == 0 || image.rows == 0, "image size is 0 X 0");
+		ROS_DEBUG_STREAM_ONCE("image size: " << image.cols << " X " << image.rows);
 
-		return true;
+		//this->viewImage(this->rawImage);
+
+		return image;
 	}
 
-	/*
-	 * sets the driver's current image
-	 */
-	void setImage(cv::Mat image)
-	{
-		rawImage = image;
-	}
-
-	cv::Mat getImage()
-	{
-		return this->rawImage;
-	}
 	/*
 	 * views the image using opencv's imshow
 	 */
@@ -356,18 +344,19 @@ public:
 		return input;
 	}
 
+
 	/*
 	 * assembles and publishes all message that have subscribers
 	 */
-	bool publishMessages()
+	bool publishMessages(cv::Mat rawImage)
 	{
 		//assemble the cameraInfo msg
 		sensor_msgs::CameraInfo camInfo;
 		camInfo.header.frame_id = this->cameraFrame;
 		camInfo.header.stamp = this->imageStamp;
 		camInfo.distortion_model = this->distortionModel;
-		camInfo.height = this->rawImage.rows;
-		camInfo.width = this->rawImage.cols;
+		camInfo.height = rawImage.rows;
+		camInfo.width = rawImage.cols;
 		camInfo.D = this->convertMatToVector(this->distortion);
 		std::vector<double> K_vec = this->convertMatToVector(this->intrinsic);
 		if(K_vec.size() == 9)
@@ -376,22 +365,35 @@ public:
 		}
 		else{ROS_WARN_STREAM_ONCE("intrinsic matrix specified not the right size. its size is: " << K_vec.size() << " however it must be 9");}
 
+		//viewImage(raw_image);
+
 		//begin publishing
 		if(this->colorPublisher.getNumSubscribers() > 0)
 		{
-			sensor_msgs::Image img;
-			cv_bridge::CvImage(camInfo.header, "bgr8", this->rawImage).toImageMsg(img);
+			sensor_msgs::CameraInfoPtr camInfoPtr(new sensor_msgs::CameraInfo(camInfo)); // create the camera info ptr
+			//viewImage(raw_image);
+			cv::Mat tempMat = rawImage.clone(); // make a deep copy of raw_image to the tempMat
+			sensor_msgs::ImagePtr img = cv_bridge::CvImage(camInfo.header, "bgr8", tempMat).toImageMsg(); // create the image ptr
 			ROS_DEBUG_ONCE("publishing color distorted image");
-			colorPublisher.publish(img, camInfo);
+
+			//viewImage(rawImage);
+
+			//this->viewImage(cv_bridge::toCvShare(img, "bgr8")->image);
+
+			colorPublisher.publish(img, camInfoPtr);
+
+			rawImage = tempMat.clone(); // copy the tempMat back over to rawImage
 		}
 
 		if(this->monoPublisher.getNumSubscribers() > 0)
 		{
+			cv::Mat tempMat = rawImage.clone(); // make a deep copy of raw_image to the tempMat
 			cv::Mat grayImage;
-			cvtColor(this->rawImage, grayImage, CV_BGR2GRAY);
-			sensor_msgs::Image img;
-			cv_bridge::CvImage(camInfo.header, "mono8", grayImage).toImageMsg(img);
-			monoPublisher.publish(img, camInfo);
+			cvtColor(tempMat, grayImage, CV_BGR2GRAY);
+			sensor_msgs::CameraInfoPtr camInfoPtr(new sensor_msgs::CameraInfo(camInfo)); // create the camera info ptr
+			sensor_msgs::ImagePtr img = cv_bridge::CvImage(camInfo.header, "mono8", grayImage).toImageMsg(); // create the image ptr
+			monoPublisher.publish(img, camInfoPtr);
+			rawImage = tempMat.clone(); // copy the tempMat back over to rawImage
 		}
 
 		if(this->rectColorPublisher.getNumSubscribers() > 0)
