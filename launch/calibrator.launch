@@ -1,0 +1,20 @@
+<launch>
+	<node name="camera" pkg="pauvsi_pgc_driver" type="pgcDriver" output="screen">
+		<param name="frame_rate" value="70" />
+  		<param name="serial_number" value="15374828" />
+  		<param name="publish_rectified" value="false" />
+		<param name="publish_distort" value="true" />
+		<param name="publish_color" value="true" />
+		<param name="publish_mono" value="true" />
+		<param name="topic" value="/camera"/>
+		<param name="frame" value="bottomCamera"/>
+		<rosparam file="$(find pauvsi_pgc_driver)/params/13Y3C_params.yaml"/>
+	</node>
+	
+	<node name="calibrator" pkg="pauvsi_pgc_driver" type="calibrator" output="screen">
+		<param name="board_width" value="11" />
+		<param name="board_height" value="7" />
+		<param name="number_frames" value="40" />
+		<param name="camera_topic" value="/camera/image" />
+	</node>
+</launch>

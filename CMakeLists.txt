@@ -37,3 +37,6 @@ target_link_libraries(pgcDriverLib ${POINTGREY_LIB})
 add_executable(pgcDriver src/pgc_driver.cpp)
 target_link_libraries(pgcDriver ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} pgcDriverLib)
 
+add_executable(calibrator src/calibrator.cpp)
+target_link_libraries(calibrator ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
+
