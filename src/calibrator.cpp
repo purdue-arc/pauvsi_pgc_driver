@@ -125,6 +125,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
 		{
 			allCorners.push_back(corners); //add corners to the corner matrix
 			allPatterns.push_back(createChessboardPoints(board_width, board_height, 1.0));
+			ROS_INFO_STREAM("Collected " << allCorners.size() << " images");
 
 			//check if enough frames have been captured
 			if(allCorners.size() >= numFrames)
@@ -142,6 +143,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
 					flag |= cv::fisheye::CALIB_RECOMPUTE_EXTRINSIC;
 					flag |= cv::fisheye::CALIB_CHECK_COND;
 					flag |= cv::fisheye::CALIB_FIX_SKEW;
+					flag |= cv::fisheye::CALIB_FIX_INTRINSIC;
 
 					cv::Matx33d K_l;
 					cv::Vec4d D_l;

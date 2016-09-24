@@ -14,7 +14,7 @@
 	<node name="calibrator" pkg="pauvsi_pgc_driver" type="calibrator" output="screen">
 		<param name="board_width" value="11" />
 		<param name="board_height" value="7" />
-		<param name="number_frames" value="5" />
+		<param name="number_frames" value="10" />
 		<param name="camera_topic" value="/camera/image" />
 		<param name="distortion_model" value="fisheye"/>
 	</node>
