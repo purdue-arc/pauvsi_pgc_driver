@@ -30,13 +30,14 @@ int distortionModel = 1;
 std::string distortionModelString;
 std::string cameraTopic;
 
-cv::Mat intrinsic;
-cv::Mat distortion;
-
 int mode = DATA_COLLECTION_MODE; // start in data collection mode
 
 std::vector<std::vector<cv::Point2f> > allCorners;
 std::vector<std::vector<cv::Point3f> > allPatterns;
+
+//fisheye
+cv::Matx33d K;
+cv::Vec4d D;
 
 /*
  * reads parameters from ros parameter server
@@ -88,9 +89,9 @@ std::vector<cv::Point3f> createChessboardPoints(int width, int height, float poi
 {
 	std::vector<cv::Point3f> chessboard_points;
 
-	for(int i = 0; i < width; i++)
+	for(int i = 0; i < height; i++)
 	{
-		for(int j = 0; j < height; j++)
+		for(int j = 0; j < width; j++)
 		{
 			cv::Point3f point(pointDistance * i, pointDistance * j, 0.0f);
 			chessboard_points.push_back(point);
@@ -131,30 +132,54 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
 				ROS_DEBUG_STREAM("object points total: " << allPatterns.size() << " image points total: " << allCorners.size());
 				mode = DISPLAY_MODE; // set mode to display
 
-				std::vector<cv::Mat> tvecs;
-				std::vector<cv::Mat> rvecs;
 				double rms;
 				//CALIBRATE
 				if(distortionModel == FISHEYE)
 				{
 					ROS_INFO("Beginning fisheye calibration...");
-					rms = cv::fisheye::calibrate(allPatterns, allCorners, cv::Size(image.rows, image.cols), intrinsic, distortion, rvecs, tvecs);
+
+					int flag = 0;
+					flag |= cv::fisheye::CALIB_RECOMPUTE_EXTRINSIC;
+					flag |= cv::fisheye::CALIB_CHECK_COND;
+					flag |= cv::fisheye::CALIB_FIX_SKEW;
+
+					cv::Matx33d K_l;
+					cv::Vec4d D_l;
+
+					rms = cv::fisheye::calibrate(allPatterns, allCorners, cv::Size(image.rows, image.cols), K_l, D_l, cv::noArray(), cv::noArray(), flag, cv::TermCriteria(3, 20, 1e-6));
+
+					ROS_INFO_STREAM("fisheye calibration complete with an error of " << rms);
+					ROS_INFO("Please copy these matrices into a camera parameter file.");
+					K = K_l;
+					D = D_l;
+					ROS_INFO_STREAM("Intrinsic Matrix: " << K);
+					ROS_INFO_STREAM("Distortion Matrix: " << D);
 				}
 				else if(distortionModel == PINHOLE)
 				{
 
 				}
 
-				ROS_INFO_STREAM("Calibration complete with an error of " << rms);
-				ROS_INFO("Please copy these matrices into a camera parameter file.");
-				ROS_INFO_STREAM("Intrinsic Matrix: " << intrinsic);
-				ROS_INFO_STREAM("Distortion Matrix: " << distortion);
-
 			}
 		}
 	}
+	else if(mode == DISPLAY_MODE)
+	{
+		if(distortionModel == FISHEYE)
+		{
+			ROS_INFO_ONCE("Preparing rectify using fisheye matrices");
+			cv::Matx33d newK = K;
+			newK(0, 0) = 100;
+			newK(1, 1) = 100;
+			cv::Mat image_rectified;
+			cv::fisheye::undistortImage(image, image_rectified, K, D, newK);
 
-	cv::imshow("Calibration", image);
+			cv::imshow("Rectified", image_rectified);
+			cv::waitKey(30);
+		}
+	}
+
+	cv::imshow("Calibration/Distort", image);
 	cv::waitKey(30);
 
 }
