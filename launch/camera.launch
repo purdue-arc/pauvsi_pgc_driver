@@ -1,6 +1,6 @@
 <launch>
 	<node name="camera" pkg="pauvsi_pgc_driver" type="pgcDriver" output="screen">
-		<param name="frame_rate" value="70" />
+		<param name="frame_rate" value="150" />
   		<param name="serial_number" value="15374828" />
   		<param name="publish_rectified" value="false" />
 		<param name="publish_distort" value="true" />

@@ -30,9 +30,13 @@ int distortionModel = 1;
 std::string distortionModelString;
 std::string cameraTopic;
 
+cv::Mat intrinsic;
+cv::Mat distortion;
+
 int mode = DATA_COLLECTION_MODE; // start in data collection mode
 
-std::vector<std::vector<cv::Point2f>> allCorners;
+std::vector<std::vector<cv::Point2f> > allCorners;
+std::vector<std::vector<cv::Point3f> > allPatterns;
 
 /*
  * reads parameters from ros parameter server
@@ -48,7 +52,7 @@ void readParameters()
 	ROS_INFO_STREAM("Using images from topic: " << cameraTopic);
 
 	ros::param::param<std::string>("~distortion_model", distortionModelString, DEFAULT_DISTORTION_MODEL);
-	if(distortionModelString.compare(PINHOLE_STRING))
+	if(distortionModelString == PINHOLE_STRING)
 	{
 		distortionModel = PINHOLE;
 	}
@@ -105,10 +109,8 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
 
 	if(mode == DATA_COLLECTION_MODE)
 	{
-		if(!isMatGrayscale(image))
-		{
-			cvtColor(image, image, CV_BGR2GRAY); // convert image to grayscale
-		}
+
+		cvtColor(image, image, CV_BGR2GRAY); // convert image to grayscale
 
 		std::vector<cv::Point2f> corners;
 
@@ -121,17 +123,39 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
 		if(foundChessBoard)
 		{
 			allCorners.push_back(corners); //add corners to the corner matrix
+			allPatterns.push_back(createChessboardPoints(board_width, board_height, 1.0));
 
 			//check if enough frames have been captured
 			if(allCorners.size() >= numFrames)
 			{
+				ROS_DEBUG_STREAM("object points total: " << allPatterns.size() << " image points total: " << allCorners.size());
 				mode = DISPLAY_MODE; // set mode to display
 
+				std::vector<cv::Mat> tvecs;
+				std::vector<cv::Mat> rvecs;
+				double rms;
 				//CALIBRATE
+				if(distortionModel == FISHEYE)
+				{
+					ROS_INFO("Beginning fisheye calibration...");
+					rms = cv::fisheye::calibrate(allPatterns, allCorners, cv::Size(image.rows, image.cols), intrinsic, distortion, rvecs, tvecs);
+				}
+				else if(distortionModel == PINHOLE)
+				{
+
+				}
+
+				ROS_INFO_STREAM("Calibration complete with an error of " << rms);
+				ROS_INFO("Please copy these matrices into a camera parameter file.");
+				ROS_INFO_STREAM("Intrinsic Matrix: " << intrinsic);
+				ROS_INFO_STREAM("Distortion Matrix: " << distortion);
 
 			}
 		}
 	}
+
+	cv::imshow("Calibration", image);
+	cv::waitKey(30);
 
 }
 
@@ -142,7 +166,9 @@ int main(int argc, char **argv)
 
 	readParameters();
 
-	ros::Rate loop_rate(LOOP_RATE);
+	image_transport::ImageTransport it(nh);
+	image_transport::Subscriber imageSub;
+	imageSub = it.subscribe(cameraTopic, 1, imageCallback);
 
 	ros::spin();
 
