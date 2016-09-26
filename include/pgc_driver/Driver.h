@@ -178,6 +178,8 @@ public:
 		ROS_INFO_STREAM(camInfo.sensorInfo);
 		ROS_INFO("%i", camInfo.serialNumber);
 
+		camera.SetVideoModeAndFrameRate(FlyCapture2::VIDEOMODE_FORMAT7, FlyCapture2::FRAMERATE_60);
+
 		error = camera.StartCapture();
 		if ( error == FlyCapture2::PGRERROR_ISOCH_BANDWIDTH_EXCEEDED )
 		{
