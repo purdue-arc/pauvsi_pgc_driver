@@ -20,6 +20,8 @@
 #include <math.h>
 
 #define DEFAULT_RATE 10
+#define DEFAULT_SCALE_X 640
+#define DEFAULT_SCALE_Y 480
 
 // these must be global
 FlyCapture2::Error error;
@@ -41,6 +43,8 @@ private:
 	ros::Time imageStamp;
 	std::string cameraFrame;
 	std::string distortionModel;
+	int scaleX;
+	int scaleY;
 
 public:
 	std::string topic;
@@ -48,12 +52,14 @@ public:
 	bool publish_rect;
 	bool publish_mono;
 	bool publish_color;
+	bool publish_scaled_mono;
 	int frame_rate;
 
 	image_transport::CameraPublisher colorPublisher;
 	image_transport::CameraPublisher monoPublisher;
 	image_transport::CameraPublisher rectColorPublisher;
 	image_transport::CameraPublisher rectMonoPublisher;
+	image_transport::CameraPublisher scaledMonoPublisher;
 
 	Driver(){
 		this->getParameters(); // get parameters from the param server
@@ -87,6 +93,11 @@ public:
 		// color publish
 		ros::param::param<bool>("~publish_mono", publish_mono, false);
 		ros::param::param<bool>("~publish_color", publish_color, true);
+
+		//scale
+		ros::param::param<bool>("~publish_scaled_mono", publish_scaled_mono, false);
+		ros::param::param<int>("~scaleX", scaleX, DEFAULT_SCALE_X);
+		ros::param::param<int>("~scaleY", scaleY, DEFAULT_SCALE_Y);
 
 		// undistort matrices
 		ros::param::param<std::string>("~intrinsic", intrinsicString, "0");
@@ -406,6 +417,22 @@ public:
 		if(this->rectMonoPublisher.getNumSubscribers() > 0)
 		{
 
+		}
+
+		if(this->scaledMonoPublisher.getNumSubscribers() > 0)
+		{
+			cv::Mat tempMat = rawImage.clone(); // make a deep copy of raw_image to the tempMat
+			cv::Mat grayImage;
+			cvtColor(tempMat, grayImage, CV_BGR2GRAY);
+			//scale image
+			cv::resize(grayImage, grayImage, cv::Size(scaleX, scaleY));
+			camInfo.height = scaleY;
+			camInfo.width = scaleX;
+
+			sensor_msgs::CameraInfoPtr camInfoPtr(new sensor_msgs::CameraInfo(camInfo)); // create the camera info ptr
+			sensor_msgs::ImagePtr img = cv_bridge::CvImage(camInfo.header, "mono8", grayImage).toImageMsg(); // create the image ptr
+			scaledMonoPublisher.publish(img, camInfoPtr);
+			rawImage = tempMat.clone(); // copy the tempMat back over to rawImage
 		}
 	}
 

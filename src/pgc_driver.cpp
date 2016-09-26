@@ -19,7 +19,7 @@ int main(int argc, char **argv)
 	if(driver.publish_distort && driver.publish_color) {driver.colorPublisher = it.advertiseCamera(driver.topic + "/image_color", 1);}
 	if(driver.publish_rect && driver.publish_color) {driver.rectColorPublisher = it.advertiseCamera(driver.topic + "/image_rect_color", 1);}
 	if(driver.publish_rect && driver.publish_mono) {driver.rectMonoPublisher = it.advertiseCamera(driver.topic + "/image_rect", 1);}
-
+	if(driver.publish_scaled_mono) {driver.scaledMonoPublisher = it.advertiseCamera(driver.topic + "/image_scaled", 1);}
 
 	// try to connect the camera
 	while(!driver.connectCamera(driver.getSerialNumber()) && nh.ok())
