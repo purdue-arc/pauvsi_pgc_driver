@@ -38,8 +38,12 @@ private:
 	int serial_number;
 	std::string intrinsicString;
 	std::string distortionString;
+	std::string scaled_intrinsicString;
+	std::string scaled_distortionString;
 	cv::Mat intrinsic;
 	cv::Mat distortion;
+	cv::Mat scaled_intrinsic;
+	cv::Mat scaled_distortion;
 	ros::Time imageStamp;
 	std::string cameraFrame;
 	std::string distortionModel;
@@ -66,6 +70,11 @@ public:
 
 		intrinsic = this->createMatFromString(intrinsicString); //convert intrinsic string to cv::Mat
 		distortion = this->createMatFromString(distortionString); //convert distortion string to cv::Mat
+		if(publish_scaled_mono)
+		{
+			scaled_intrinsic = this->createMatFromString(scaled_intrinsicString); //convert intrinsic string to cv::Mat
+			scaled_distortion = this->createMatFromString(scaled_distortionString); //convert distortion string to cv::Mat
+		}
 
 	}
 
@@ -102,6 +111,9 @@ public:
 		// undistort matrices
 		ros::param::param<std::string>("~intrinsic", intrinsicString, "0");
 		ros::param::param<std::string>("~distortion", distortionString, "0");
+
+		ros::param::param<std::string>("~scaled_intrinsic", scaled_intrinsicString, "0");
+		ros::param::param<std::string>("~scaled_distortion", scaled_distortionString, "0");
 
 		//model
 		ros::param::param<std::string>("~distortionModel", distortionModel, "fisheye");
@@ -428,6 +440,14 @@ public:
 			cv::resize(grayImage, grayImage, cv::Size(scaleX, scaleY));
 			camInfo.height = scaleY;
 			camInfo.width = scaleX;
+
+			camInfo.D = this->convertMatToVector(this->scaled_distortion);
+			std::vector<double> K_vec = this->convertMatToVector(this->scaled_intrinsic);
+			if(K_vec.size() == 9)
+			{
+				for(int i = 0; i < 9; i++) camInfo.K.at(i) = K_vec.at(i); // this sets each of the members of K
+			}
+			else{ROS_WARN_STREAM_ONCE("intrinsic matrix specified not the right size. its size is: " << K_vec.size() << " however it must be 9");}
 
 			sensor_msgs::CameraInfoPtr camInfoPtr(new sensor_msgs::CameraInfo(camInfo)); // create the camera info ptr
 			sensor_msgs::ImagePtr img = cv_bridge::CvImage(camInfo.header, "mono8", grayImage).toImageMsg(); // create the image ptr

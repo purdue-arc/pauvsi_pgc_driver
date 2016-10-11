@@ -1,13 +1,16 @@
 <launch>
 	<node name="camera" pkg="pauvsi_pgc_driver" type="pgcDriver" output="screen">
-		<param name="frame_rate" value="70" />
+		<param name="frame_rate" value="50" />
   		<param name="serial_number" value="15374828" />
   		<param name="publish_rectified" value="false" />
 		<param name="publish_distort" value="true" />
-		<param name="publish_color" value="true" />
-		<param name="publish_mono" value="true" />
-		<param name="topic" value="/camera"/>
-		<param name="frame" value="bottomCamera"/>
+		<param name="publish_color" value="false" />
+		<param name="publish_mono" value="false" />
+		<param name="topic" value="/camera/bottom"/>
+		<param name="frame" value="bottom_camera"/>
+		<param name="publish_scaled_mono" value="true" />
+		<param name="scaleX" value="640" />
+		<param name="scaleY" value="512" />
 		<rosparam file="$(find pauvsi_pgc_driver)/params/13Y3C_params.yaml"/>
 	</node>
 	
@@ -15,7 +18,7 @@
 		<param name="board_width" value="11" />
 		<param name="board_height" value="7" />
 		<param name="number_frames" value="10" />
-		<param name="camera_topic" value="/camera/image" />
+		<param name="camera_topic" value="/camera/bottom/image_scaled" />
 		<param name="distortion_model" value="fisheye"/>
 	</node>
 </launch>
